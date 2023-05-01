@@ -1,0 +1,40 @@
+--Trigger change in salary of employee
+
+create table emp_salary_audit
+( 
+empID   VARCHAR2(8), 
+empName VARCHAR2(20),
+emp_positionId  VARCHAR2(7),
+oriSalary 	 NUMBER,
+newSalary    NUMBER,        
+ActionDate 	 DATE,
+Time   VARCHAR(5),
+USER_NAME    VARCHAR2(20)
+);
+	
+ALTER TABLE EMPLOYEE DISABLE ALL TRIGGERS;
+
+CREATE OR REPLACE TRIGGER TRG_TRACK_SALARY_EMP
+AFTER UPDATE OF SALARY ON EMPLOYEE
+FOR EACH ROW
+
+DECLARE 
+V_empID VARCHAR2(8);
+
+BEGIN
+
+	Select empID into v_empID
+	FROM emp_salary_audit
+	WHERE empID =:new.employee_id;
+
+	IF SQL%FOUND THEN
+		DBMS_OUTPUT.PUT_LINE('Employee salary have been updated');
+	END IF;
+	
+	EXCEPTION 
+		WHEN NO_DATA_FOUND THEN
+			insert into emp_salary_audit values (:new.employee_id, :new.name, :new.position_id, :old.salary, :new.salary, SYSDATE, TO_CHAR(SYSDATE, 'HH24:MI'), USER);
+	
+END;
+/
+	

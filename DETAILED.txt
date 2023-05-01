@@ -1,0 +1,287 @@
+--MONTHLY SUPPLY INSIGHT
+
+ALTER SESSION SET NLS_DATE_FORMAT='DD/MM/YYYY';
+SET LINESIZE 200
+SET PAGESIZE 100
+SET DEFINE ON;
+SET SERVEROUTPUT ON；
+
+CREATE OR REPLACE PROCEDURE PRC_SUPPLY_INSIGHT (V_STARTDATE IN DATE, V_ENDDATE IN DATE) AS
+
+ v_supplyID  	SUPPLY.supply_id%TYPE;
+ v_dateReceive  SUPPLY.date_receive%TYPE;
+ v_supplyTitle  SUPPLY.supply_title%TYPE;
+ v_supplierID  	SUPPLY.supplier_id%TYPE;
+ v_qty	     	SUPPLY.quantity%TYPE;
+ v_price	  	SUPPLY.price%TYPE;
+ v_employeeID  	SUPPLY.employee_id%TYPE;
+ v_category   	SUPPLY.category%TYPE;
+ v_supplierName SUPPLIER.supplier_name%TYPE;
+ v_empName   	EMPLOYEE.name%TYPE;
+ v_positionID  	EMPLOYEE.position_id%TYPE;
+ 
+ supplyReceiveByEmp NUMBER;
+ catQty NUMBER;
+ supplierQty NUMBER;
+ dateQty NUMBER;
+ total NUMBER;
+
+CURSOR POPULAR_CAT IS
+	SELECT *
+	FROM (SELECT category, COUNT (category) AS catQty
+		FROM SUPPLY
+		WHERE date_receive BETWEEN V_STARTDATE AND V_ENDDATE
+		GROUP BY category
+		ORDER BY catQty desc)
+	WHERE ROWNUM<=3;
+	
+CURSOR POPULAR_SUPPLY IS
+	SELECT *
+	FROM (SELECT supply_id, supply_title, quantity
+		FROM SUPPLY
+		WHERE date_receive BETWEEN V_STARTDATE AND V_ENDDATE
+		ORDER BY quantity desc)
+	WHERE ROWNUM<=10;
+	
+CURSOR POPULAR_SUPPLIER IS
+	SELECT *
+	FROM (SELECT S.supplier_id, supplier_name, COUNT (S.supplier_id) AS supplierQty
+		 FROM SUPPLY S, SUPPLIER SR
+		WHERE S.supplier_id=SR.supplier_id AND date_receive BETWEEN V_STARTDATE AND V_ENDDATE
+		GROUP BY S.supplier_id, supplier_name
+		ORDER BY supplierQty desc)
+	WHERE ROWNUM<=3;
+	
+CURSOR MOST_SUPPLYDAY IS
+	SELECT *
+	FROM (SELECT date_receive, COUNT(date_receive)as dateQty
+		FROM SUPPLY S
+		WHERE date_receive BETWEEN V_STARTDATE AND V_ENDDATE
+		GROUP BY date_receive
+		ORDER BY dateQty desc)
+	WHERE ROWNUM<=3;	
+		
+CURSOR MOST_EXPENSIVE_SUPPLY IS
+	SELECT *
+	FROM (SELECT supply_id,supply_title, price
+		FROM SUPPLY
+		WHERE date_receive BETWEEN V_STARTDATE AND V_ENDDATE
+		ORDER BY price desc)
+	WHERE ROWNUM<=3;
+	
+CURSOR EMPCOUNT IS
+	SELECT *
+	FROM (SELECT S.employee_id, E.name, COUNT(S.employee_id) AS supplyReceiveByEmp
+		FROM SUPPLY S, EMPLOYEE E
+		WHERE S.employee_id= E.employee_id AND date_receive BETWEEN V_STARTDATE AND V_ENDDATE
+		GROUP BY S.employee_id, E.name
+		ORDER BY supplyReceiveByEmp desc)
+	WHERE ROWNUM<=3;
+	
+CURSOR TOTAL_BUYIN IS
+	SELECT SUM (quantity*price) AS total
+	FROM SUPPLY
+	WHERE date_receive BETWEEN V_STARTDATE AND V_ENDDATE;
+	
+BEGIN
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',7,'-')||' '||'SUPPLY INSIGHT FROM '||V_STARTDATE||' '||'TO '||V_ENDDATE||' '||LPAD('-',7,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',17,'-')||' '||'MOST SUBSCRIBE CATEGORY'||' '||LPAD('-',18,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	DBMS_OUTPUT.PUT_LINE(RPAD('CATEGORY',40,' ')||' '||RPAD('CAT QTY',15,' '));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	--Find most subscribe category
+	OPEN POPULAR_CAT;
+	
+	LOOP
+		FETCH POPULAR_CAT INTO
+		v_category,
+		catQty;
+	EXIT WHEN POPULAR_CAT%NOTFOUND;
+	
+	IF POPULAR_CAT%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD(v_category,40,' ')||' '||RPAD(catQty,15,' '));
+	
+	END IF;
+	
+	END LOOP;
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	CLOSE POPULAR_CAT;
+	
+	--Find most subscribe supply
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',18,'-')||' '||'MOST SUBSCRIBE SUPPLY'||' '||LPAD('-',19,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	DBMS_OUTPUT.PUT_LINE(RPAD('SUPPLY ID',10,' ')||' '||RPAD('SUPPLY TITLE',40,' ')||' '||RPAD('QTY',10,' '));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	OPEN POPULAR_SUPPLY;
+	
+	LOOP
+		FETCH POPULAR_SUPPLY INTO
+		v_supplyID,
+		v_supplyTitle,
+		v_qty;
+	EXIT WHEN POPULAR_SUPPLY%NOTFOUND;
+	
+	IF POPULAR_SUPPLY%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD(v_supplyID,10,' ')||' '||RPAD(v_supplyTitle,40,' ')||' '||RPAD(v_qty,10,' '));
+	
+	END IF;
+	
+	END LOOP;
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	CLOSE POPULAR_SUPPLY;
+	
+	--Find most subscribe supplier
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',18,'-')||' '||'MOST SUBSCRIBE SUPPLIER'||' '||LPAD('-',17,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	DBMS_OUTPUT.PUT_LINE(RPAD('SUPPLIER ID',10,' ')||' '||RPAD('SUPPLY NAME',25,' ')||' '||RPAD('SUPPLY QTY',10,' '));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	OPEN POPULAR_SUPPLIER;
+	
+	LOOP
+		FETCH POPULAR_SUPPLIER INTO
+		v_supplierID,
+		v_supplierName,
+		supplierQty;
+	EXIT WHEN POPULAR_SUPPLIER%NOTFOUND;
+	
+	IF POPULAR_SUPPLIER%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD(v_supplierID,10,' ')||' '||RPAD(v_supplierName,25,' ')||' '||RPAD(supplierQty,10,' '));
+	
+	END IF;
+	
+	END LOOP;
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	CLOSE POPULAR_SUPPLIER;
+	
+	--Find the day that have most supply receive
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',17,'-')||' '||'MOST SUPPLY RECEIVED DAY'||' '||LPAD('-',17,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	DBMS_OUTPUT.PUT_LINE(RPAD('DATE RECEIVE',20,' ')||' '||RPAD('DATE QTY',20,' '));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	OPEN MOST_SUPPLYDAY;
+	
+	LOOP
+		FETCH MOST_SUPPLYDAY INTO
+		v_dateReceive,
+		dateQty;
+	EXIT WHEN MOST_SUPPLYDAY%NOTFOUND;
+	
+	IF MOST_SUPPLYDAY%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD(v_dateReceive,20,' ')||' '||RPAD(dateQty,20,' '));
+	
+	END IF;
+	
+	END LOOP;
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	CLOSE MOST_SUPPLYDAY;
+	
+	--Find the most expensive supply in the given period
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',18,'-')||' '||'MOST EXPENSIVE SUPPLY'||' '||LPAD('-',18,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	DBMS_OUTPUT.PUT_LINE(RPAD('SUPPLY ID',10,' ')||' '||RPAD('SUPPLY TITLE',40,' ')||' '||RPAD('PRICE',10,' '));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	OPEN MOST_EXPENSIVE_SUPPLY;
+	
+	LOOP
+		FETCH MOST_EXPENSIVE_SUPPLY INTO
+		v_supplyID,
+		v_supplyTitle,
+		v_price;
+	EXIT WHEN MOST_EXPENSIVE_SUPPLY%NOTFOUND;
+	
+	IF MOST_EXPENSIVE_SUPPLY%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD(v_supplyID,10,' ')||' '||RPAD(v_supplyTitle,40,' ')||' '||RPAD(v_price,10,' '));
+	
+	END IF;
+	
+	END LOOP;
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	CLOSE MOST_EXPENSIVE_SUPPLY;
+	
+	
+--Find the employee that receive most supply
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',12,'-')||' '||'EMPLOYEE THAT RECEIVE MOST SUPPLY'||' '||LPAD('-',12,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	DBMS_OUTPUT.PUT_LINE(RPAD('EMP ID',10,' ')||' '||RPAD('EMP NAME',25,' ')||' '||RPAD('RECEIVE QTY',12,' '));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	OPEN EMPCOUNT;
+	
+	LOOP
+		FETCH EMPCOUNT INTO
+		v_employeeID,
+		v_empName,
+		supplyReceiveByEmp;
+	EXIT WHEN EMPCOUNT%NOTFOUND;
+	
+	IF EMPCOUNT%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD(v_employeeID,10,' ')||' '||RPAD(v_empName,25,' ')||' '||RPAD(supplyReceiveByEmp,12,' '));
+	
+	END IF;
+	
+	END LOOP;
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',60,'='));
+	
+	CLOSE EMPCOUNT;
+	
+	--total buy in in the period
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	
+	OPEN TOTAL_BUYIN;
+	
+	LOOP
+		FETCH TOTAL_BUYIN INTO
+		total;
+	EXIT WHEN TOTAL_BUYIN%NOTFOUND;
+	
+	IF TOTAL_BUYIN%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(5));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE('TOTAL BUY IN: '||'RM'||total);
+	
+	END IF;
+	
+	END LOOP;
+	
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',23,'-')||' '||'END OF REPORT'||' '||LPAD('-',22,'-'));
+	
+	CLOSE TOTAL_BUYIN;
+END;
+/
+	

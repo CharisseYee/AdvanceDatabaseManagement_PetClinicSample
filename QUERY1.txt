@@ -1,0 +1,32 @@
+SET linesize 200
+SET pagesize 150
+SET DEFINE ON;
+SET SERVEROUTPUT ON;
+ALTER SESSION SET NLS_DATE_FORMAT = "DD/MM/YYYY";
+
+PROMPT 'Output the top 10 diseases that infected most pet'
+ACCEPT v_startDate CHAR FORMAT 'A11' PROMPT ' Enter the start date (DD/MM/YYYY):  '
+ACCEPT v_endDate  CHAR FORMAT 'A11' PROMPT ' Enter the end date (DD/MM/YYYY):  '
+
+COLUMN disease_id FORMAT A10 HEADING "DISEASE ID"
+COLUMN title FORMAT A30 HEADING "DISEASE NAME"
+Column species FORMAT A40 HEADING "SPECIES" 
+COLUMN sick_count FORMAT 9999 HEADING "SICK COUNT"
+
+
+TTITLE LEFT '---------------DISEASE THAT INFECTED MOST PET FROM '&v_startDate' TO '&v_endDate'------------------' SKIP2
+
+CREATE OR REPLACE VIEW DiseaseView AS
+SELECT *
+FROM (SELECT EX.disease_id, D.title, D.species, COUNT(pet_id) AS SICK_COUNT
+	FROM EXAMINATION EX, Disease D
+	WHERE EX.disease_id=D.disease_id AND exam_date BETWEEN '&v_startDate' AND '&v_endDate'
+	GROUP BY EX.disease_id, D.title, D.species
+	ORDER BY sick_count DESC)
+WHERE ROWNUM<=10;
+
+SELECT * FROM DiseaseView;
+
+CLEAR COLUMNS
+TTITLE OFF
+

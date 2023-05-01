@@ -1,0 +1,99 @@
+ALTER SESSION SET NLS_DATE_FORMAT='DD/MM/YYYY';
+SET LINESIZE 200
+SET PAGESIZE 100
+SET DEFINE ON;
+SET SERVEROUTPUT ON；
+
+CREATE OR REPLACE PROCEDURE PRC_MONTHLY_EXAM_REC (V_STARTDATE IN DATE, V_ENDDATE IN DATE， V_EMPID IN VARCHAR2) AS
+
+  v_empName		 EMPLOYEE.name%TYPE;
+  v_empEmail     EMPLOYEE.email%TYPE;
+  v_positionName POSITION.title%TYPE;
+  v_examDate     EXAMINATION.exam_date%TYPE;
+  v_examTime     EXAMINATION.exam_time%TYPE;
+  v_petID        EXAMINATION.pet_id%TYPE;
+  v_diseaseName	 DISEASE.title%TYPE;
+  v_taskType	 TASK.type%TYPE;
+  
+CURSOR EMP_CURSOR IS
+	SELECT EM.name, EM.email, P.title
+	FROM Employee EM, Position P
+	WHERE EM.position_id= P.position_id AND EM.employee_id =V_EMPID;
+	
+CURSOR EXAM_CURSOR IS
+    SELECT exam_date, exam_time, EX.pet_id, D.title, T.type
+    FROM Examination EX, Disease D, Task T
+    WHERE EX.disease_id = D.disease_id AND EX.task_id=T.task_id AND EX.exam_date BETWEEN V_STARTDATE AND V_ENDDATE AND EX.employee_id =V_EMPID;
+
+BEGIN
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',35,'-')||' '||'MONTHLY EXAMINATION RECORD FROM '||V_STARTDATE||' '||'TO '||V_ENDDATE||' '||LPAD('-',36,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',130,'='));
+	DBMS_OUTPUT.PUT_LINE('EMPLOYEE ID  : '||V_EMPID);
+	
+	OPEN EMP_CURSOR;
+	
+	LOOP
+		FETCH EMP_CURSOR INTO
+		v_empName,
+		v_empEmail,
+		v_positionName;
+	EXIT WHEN EMP_CURSOR%NOTFOUND;
+	
+	IF EMP_CURSOR%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	DBMS_OUTPUT.PUT_LINE('NAME         : '||v_empName);
+	DBMS_OUTPUT.PUT_LINE('EMAIL        : '||v_empEmail);
+	DBMS_OUTPUT.PUT_LINE('POSITION NAME: '||v_positionName);
+	
+	END IF;
+	
+	END LOOP;
+	
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',130,'='));
+	DBMS_OUTPUT.PUT_LINE(RPAD('EXAM DATE',25,' ')||' '||RPAD('EXAM TIME',25,' ')||' '||RPAD('PET ID',25,' ')||' '||
+		RPAD('DISEASE NAME',30,' ')||' '||RPAD('TASK TYPE',25, ' '));
+		
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',130,'='));
+	
+	OPEN EXAM_CURSOR;
+	
+	LOOP
+		FETCH EXAM_CURSOR INTO
+		--v_empName,
+		--v_empEmail,
+		--v_positionName,
+		v_examDate,
+		v_examTime,
+		v_petID,
+		v_diseaseName,
+		v_taskType;
+	EXIT WHEN EXAM_CURSOR%NOTFOUND;
+	
+	IF EXAM_CURSOR%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD(v_examDate,25,' ')||' '||RPAD(v_examTime,25,' ')||' '||RPAD(v_petID,25,' ')||' '||
+		RPAD(v_diseaseName,30,' ')||' '||RPAD(v_taskType,25, ' '));
+	END IF;
+	
+	END LOOP;
+	
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',130,'='));
+	
+	DBMS_OUTPUT.PUT_LINE('TOTAL EXAMINATION RECORD: '||EXAM_CURSOR%ROWCOUNT);
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',130,'-'));
+	
+	CLOSE EXAM_CURSOR;
+END;
+/
+
+/*
+exec PRC_MONTHLY_EXAM_REC('1/3/2020','31/3/2020','EMP30000');
+
+select exam_date, exam_time, employee_id
+from examination E
+where employee_id ='EMP30000' AND exam_date between '1/3/2020' AND '31/3/2020';
+*/

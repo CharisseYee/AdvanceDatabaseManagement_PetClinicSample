@@ -1,0 +1,81 @@
+--Procedure last examine
+
+SET LINESIZE 120
+SET PAGESIZE 100
+SET DEFINE ON;
+SET SERVEROUTPUT ON;
+ALTER SESSION SET NLS_DATE_FORMAT = "DD/MM/YYYY";
+
+create or replace procedure prc_last_examine (v_petID IN varchar2) AS
+
+v_examDate             EXAMINATION.exam_date%TYPE;
+v_duration NUMBER(4);
+v_months NUMBER(4,1);
+v_diseaseID			   EXAMINATION.disease_id%TYPE;
+v_taskID 			   EXAMINATION.task_id%TYPE;
+v_diseaseName		   DISEASE.title%TYPE;
+v_taskType			   Task.type%TYPE;
+
+CURSOR LASTEXAM_CURSOR IS
+	SELECT MAX(exam_date) into v_examDate
+	FROM EXAMINATION 
+	WHERE pet_id=v_petID;
+	
+CURSOR SHOW_DT_CURSOR IS
+	SELECT EX.disease_id, EX.task_id, D.title, T.type
+	FROM Examination EX, Disease D, Task T
+	WHERE EX.disease_id=D.disease_id AND EX.task_id=T.task_id AND pet_id=v_petID;
+
+BEGIN
+	
+	OPEN LASTEXAM_CURSOR;
+	
+	LOOP
+		FETCH LASTEXAM_CURSOR INTO
+		v_examDate;
+		EXIT WHEN LASTEXAM_CURSOR%NOTFOUND;
+	
+	IF LASTEXAM_CURSOR%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE('NO EXAMINATION RECORD FOR '||v_petID);
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE ('Pet ' ||v_petID||' last examination on '||v_examDate||'.');
+	
+	END IF;
+	
+	END LOOP;
+	
+	OPEN SHOW_DT_CURSOR;
+	
+	LOOP
+		FETCH SHOW_DT_CURSOR INTO
+		v_diseaseID,
+		v_taskID,
+		v_diseaseName,
+		v_taskType;
+		EXIT WHEN SHOW_DT_CURSOR%NOTFOUND;
+	
+	IF SHOW_DT_CURSOR%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE ('Disease: '||v_diseaseID||', '||v_diseaseName);
+	DBMS_OUTPUT.PUT_LINE ('Task: '||v_taskID||', '||v_taskType);
+	
+	END IF;
+	
+	END LOOP;
+	
+	v_duration :=sysdate-v_examDate;
+	
+	if (v_duration <30) THEN
+	  	dbms_output.put_line('That was '||v_duration||' days ago.');
+	else
+		v_months := v_duration/30;
+		dbms_output.put_line('That was '||v_months||' months ago.');
+	end if;
+	
+	CLOSE LASTEXAM_CURSOR;
+	
+end;
+/

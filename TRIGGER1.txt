@@ -1,0 +1,35 @@
+--Trigger the change made in examination table
+
+create table examination_audit
+( 
+examDate     Date,        
+examTime     VARCHAR2(5),
+petID        VARCHAR2(7),
+employeeID   VARCHAR2(8), 
+TYPE_ACTION  VARCHAR2(15),        
+ActionDate 	 DATE,
+USER_NAME    VARCHAR2(20)
+);
+
+ALTER TABLE EXAMINATION DISABLE ALL TRIGGERS;
+
+CREATE OR REPLACE TRIGGER TRACK_EXAMINATION
+AFTER INSERT OR UPDATE OR DELETE ON EXAMINATION
+FOR EACH ROW
+BEGIN
+
+CASE
+WHEN INSERTING THEN
+	insert into examination_audit values (:new.exam_date, :new.exam_time, :new.pet_id, :new.employee_id, 'INSERT', SYSDATE, USER);
+WHEN DELETING THEN
+	insert into examination_audit values (:old.exam_date, :old.exam_time, :old.pet_id, :old.employee_id, 'DELETE',SYSDATE,USER);
+WHEN UPDATING THEN
+	insert into examination_audit values (:new.exam_date, :new.exam_time, :new.pet_id, :new.employee_id, 'UPDATE',SYSDATE,USER);
+	
+END CASE;
+END;
+/
+
+--INSERT INTO Examination VALUES ('22/8/2021','15:12','P002001',13,'EMP30000','D0010','22/8/2021','TA0007');
+
+--ALTER TRIGGER TRACK_EXAMINATION DISABLE;

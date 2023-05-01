@@ -1,0 +1,37 @@
+SET linesize 200
+SET pagesize 100
+SET DEFINE ON;
+ALTER SESSION SET NLS_DATE_FORMAT = "DD/MM/YYYY";
+
+PROMPT 'Output the supply of the given date'
+ACCEPT v_date date FORMAT 'DD/MM/YYYY' PROMPT ' Enter the date (DD/MM/YYYY):  '
+
+COLUMN category FORMAT A35 HEADING "CATEGORY"
+COLUMN supply_id FORMAT A10 HEADING "SUPPLY ID"
+Column supply_title FORMAT A50 HEADING "SUPPLY TITLE" 
+COLUMN supplier_id FORMAT A12 HEADING "SUPPLIER ID"
+Column supplier_name FORMAT A20 HEADING "SUPPLIER NAME" 
+COLUMN quantity FORMAT 999 HEADING "QUANTITY"
+COLUMN price FORMAT 9999 HEADING "PRICE"
+COLUMN SUBTOTAL FORMAT 9999999 HEADING "TOTAL PURCHASE"
+
+TTITLE LEFT 'SUPPLY RECEIVED ON '&v_date' 'SKIP2
+BREAK ON category SKIP 2
+COMPUTE SUM LABEL 'TOTAL' OF SUBTOTAL ON category
+
+
+CREATE OR REPLACE VIEW DailySupply AS
+SELECT category, supply_id, supply_title, S.supplier_id, supplier_name, quantity, price, (quantity*price) AS SUBTOTAL
+FROM SUPPLY S,  SUPPLIER SR
+WHERE S.supplier_id=SR.supplier_id AND date_receive= to_date('&v_date','dd/mm/YYYY')
+GROUP BY category, supply_id, supply_title, S.supplier_id, supplier_name, quantity, price
+ORDER BY category;
+
+SELECT*FROM DailySupply;
+
+CLEAR COLUMNS
+CLEAR BREAKS
+CLEAR COMPUTES
+TTITLE OFF
+
+

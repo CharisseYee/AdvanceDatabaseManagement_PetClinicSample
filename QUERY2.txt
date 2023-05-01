@@ -1,0 +1,57 @@
+SET linesize 200
+SET pagesize 150
+SET DEFINE ON;
+SET SERVEROUTPUT ON;
+ALTER SESSION SET NLS_DATE_FORMAT = "DD/MM/YYYY";
+
+PROMPT 'Output the supplies supplied by supplier in selected period'
+ACCEPT v_startDate CHAR FORMAT 'A11' PROMPT ' Enter the start date (DD/MM/YYYY):  '
+ACCEPT v_endDate  CHAR FORMAT 'A11' PROMPT ' Enter the end date (DD/MM/YYYY):  '
+
+CREATE OR REPLACE VIEW StateGroup AS
+SELECT supplier_id, address,
+             CASE WHEN address LIKE '%Johor' THEN 'Johor'
+                WHEN address LIKE '%Kuala Lumpur' THEN 'Kuala Lumpur'
+				WHEN address LIKE '%Negeri Sembilan' THEN 'Negeri Sembilan'
+				WHEN address LIKE '%Selangor' THEN 'Selangor'
+                WHEN address LIKE '%Putrajaya' THEN 'Putrajaya'
+                WHEN address LIKE '%Perak' THEN 'Perak'
+				WHEN address like '%Pulau Pinang%' THEN 'Pulau Pinang'
+                WHEN address LIKE '%Pahang' THEN 'Pahang'
+                WHEN address LIKE '%Kelantan' THEN 'Kelantan'
+                WHEN address LIKE '%Terengganu' THEN 'Terengganu'
+                WHEN address LIKE '%Kedah' THEN 'Kedah'
+                WHEN address LIKE '%Melaka' THEN 'Melaka'
+				WHEN address LIKE '%Perlis' THEN 'Perlis'
+             END State
+FROM (SELECT supplier_id, address
+            FROM Supplier);
+
+CREATE OR REPLACE VIEW SupplierSupply AS
+SELECT supply_title,S.supply_id, S.supplier_id, supplier_name, contact_number, email, state, S.price, COUNT(supply_id) AS Supplier_SUPPLY
+FROM SUPPLIER SR, SUPPLY S, stategroup ST
+WHERE S.supplier_id=SR.supplier_id AND SR.address=ST.address AND date_receive BETWEEN '&v_startDate' AND '&v_endDate'
+GROUP BY supply_title,S.supply_id, S.supplier_id, supplier_name, contact_number, email, state, S.price
+ORDER BY supply_title;
+
+Column supplier_id FORMAT A12 HEADING "SUPPLIER ID" 
+Column supplier_name FORMAT A35 HEADING "SUPPLIER NAME" 
+Column contact_number FORMAT A15 HEADING "CONTACT.NO" 
+Column email FORMAT A30 HEADING "EMAIL" 
+--Column state FORMAT A15 HEADING "STATE" 
+Column supply_id FORMAT A10 HEADING "SUPPLY ID" 
+Column supply_title FORMAT A50 HEADING "SUPPLY TITLE"
+Column price FORMAT 9999 HEADING "PRICE"
+Column Supplier_SUPPLY FORMAT 9999999 HEADING "SUPPLIER SUPPLY"
+
+TTITLE LEFT 'LIST OF SUPPLY BY SUPPLIER 'CENTER 'Page:'FORMAT999 SQL.PNO SKIP2
+
+BREAK ON supply_title;
+COMPUTE SUM LABEL 'TOTAL:' OF Supplier_SUPPLY ON supply_title;
+
+SELECT * FROM SupplierSupply;
+
+CLEAR COLUMNS
+CLEAR BREAK
+CLEAR COMPUTES
+TTITLE OFF

@@ -1,0 +1,168 @@
+--Summary: Pet Clinic Examination Record
+
+ALTER SESSION SET NLS_DATE_FORMAT='DD/MM/YYYY';
+SET LINESIZE 200
+SET PAGESIZE 100
+SET DEFINE ON;
+SET SERVEROUTPUT ON；
+
+CREATE OR REPLACE PROCEDURE PRC_CLINIC_EXAM_REC (V_DATE IN DATE) AS
+
+v_examDate			 Examination.exam_date%TYPE;
+v_examTime			 Examination.exam_time%TYPE;
+v_petID				 Examination.pet_id%TYPE;
+v_empName			 Employee.name%TYPE;
+v_diseaseName		 Disease.title%TYPE;
+v_releaseDate		 Examination.release_date%TYPE;
+v_taskType			 Task.type%TYPE;
+v_taskDesc			 Task.description%TYPE;
+v_empCount             NUMBER;
+V_treatmentCount       NUMBER;
+
+empCount NUMBER;
+totalEmp NUMBER;
+treatmentCount NUMBER;
+totalTreat NUMBER;
+
+CURSOR EXAMINATION_CURSOR IS
+	SELECT EX.pet_id, EM.name, T.type, T.description, D.title, exam_time
+	FROM Examination EX, Employee EM, Disease D, Task T
+	WHERE EX.employee_id=EM.employee_id AND EX.disease_id=D.disease_id AND EX.task_id=T.task_id AND exam_date=V_DATE;
+	
+CURSOR RELEASE_CURSOR IS
+	SELECT EX.pet_id, EM.name, T.type, T.description, D.title, exam_date  
+	FROM Examination EX, Employee EM, Disease D, Task T
+	WHERE EX.employee_id=EM.employee_id AND EX.disease_id=D.disease_id AND EX.task_id=T.task_id AND release_date=V_DATE;
+	
+CURSOR EMPCOUNT_CURSOR IS
+	SELECT COUNT (DISTINCT employee_id) AS empCount
+	FROM EXAMINATION
+	WHERE exam_date=V_DATE;
+	
+CURSOR TREATMENTCOUNT_CURSOR IS
+	SELECT COUNT (DISTINCT task_id) AS treatmentCount
+	FROM EXAMINATION
+	WHERE exam_date=V_DATE;
+
+BEGIN
+	totalEmp :=0;
+	totalTreat :=0;
+	
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',58,'-')||' '||'DAILY PET CLINIC EXAMINATION RECORD '||' '||LPAD('-',59,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',155,'='));
+	DBMS_OUTPUT.PUT_LINE('DATE  : '||V_DATE);
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',155,'-'));
+	DBMS_OUTPUT.PUT_LINE(RPAD('PET ID',10,' ')||' '||RPAD('EMPLOYEE NAME',25,' ')||' '||RPAD('TREATMENT NAME',20,' ')||' '||
+		RPAD('TREATMENT DESC',45,' ')||' '||RPAD('DISEASE NAME',25,' ')||' '||RPAD('EXAMINATION TIME',18, ' '));
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',155,'-'));
+	
+	OPEN EXAMINATION_CURSOR;
+	
+	LOOP
+		FETCH EXAMINATION_CURSOR INTO
+		v_petID,
+		v_empName,
+		V_taskType,
+		v_taskDesc,
+		v_diseaseName,
+		v_examTime;
+	EXIT WHEN EXAMINATION_CURSOR%NOTFOUND;
+	
+	IF EXAMINATION_CURSOR%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD(v_petID,10,' ')||' '||RPAD(v_empName,25,' ')||' '||RPAD(v_taskType,20,' ')||' '||
+		RPAD(v_taskDesc,45,' ')||' '||RPAD(v_diseaseName,25,' ')||' '||RPAD(v_examTime,18, ' '));
+	
+	END IF;
+	
+	END LOOP;
+	
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',155,'-'));
+	
+	
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',59,'-')||' '||'DAILY PET CLINIC DISCHARGE RECORD '||' '||LPAD('-',60,'-'));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',155,'='));
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD('PET ID',10,' ')||' '||RPAD('EMPLOYEE NAME',25,' ')||' '||RPAD('TREATMENT NAME',20,' ')||' '||
+		RPAD('TREATMENT DESC',45,' ')||' '||RPAD('DISEASE NAME',25,' ')||' '||RPAD('EXAMINATION DATE',18, ' '));
+		
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',155,'-'));
+	
+	OPEN RELEASE_CURSOR;
+	
+	LOOP
+		FETCH RELEASE_CURSOR INTO
+		v_petID,
+		v_empName,
+		V_taskType,
+		v_taskDesc,
+		v_diseaseName,
+		v_examDate;
+	EXIT WHEN RELEASE_CURSOR%NOTFOUND;
+	
+	IF RELEASE_CURSOR%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	ELSE
+	
+	DBMS_OUTPUT.PUT_LINE(RPAD(v_petID,10,' ')||' '||RPAD(v_empName,25,' ')||' '||RPAD(v_taskType,20,' ')||' '||
+		RPAD(v_taskDesc,45,' ')||' '||RPAD(v_diseaseName,25,' ')||' '||RPAD(v_examDate,10, ' '));
+		
+	END IF;
+	
+	END LOOP;	
+	
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',155,'-'));
+	DBMS_OUTPUT.PUT_LINE('TOTAL EXAMINATION RECORD: '||EXAMINATION_CURSOR%ROWCOUNT);
+	
+	OPEN EMPCOUNT_CURSOR;
+	
+	LOOP
+		FETCH EMPCOUNT_CURSOR INTO
+		empCount;
+	EXIT WHEN EMPCOUNT_CURSOR%NOTFOUND;
+	
+	IF EMPCOUNT_CURSOR%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	END IF;
+	
+	totalEmp := totalEmp+empCount;
+	END LOOP;
+	
+	DBMS_OUTPUT.PUT_LINE('TOTAL EMPLOYEE INVOLVED IN EXAMINATION: '|| totalEmp);
+	
+	CLOSE EMPCOUNT_CURSOR;
+	
+	OPEN TREATMENTCOUNT_CURSOR;
+	
+	LOOP
+		FETCH TREATMENTCOUNT_CURSOR INTO
+		treatmentCount;
+	EXIT WHEN TREATMENTCOUNT_CURSOR%NOTFOUND;
+	
+	IF TREATMENTCOUNT_CURSOR%ROWCOUNT=0 THEN
+		DBMS_OUTPUT.PUT_LINE(CHR(13));
+	END IF;
+	
+	totalTreat := totalTreat+treatmentCount;
+	END LOOP;
+	
+	DBMS_OUTPUT.PUT_LINE('TOTAL TREATMENT INVOLVED IN EXAMINATION: '|| totalTreat);
+	
+	CLOSE TREATMENTCOUNT_CURSOR;
+	
+	DBMS_OUTPUT.PUT_LINE('TOTAL RELEASE RECORD: '||RELEASE_CURSOR%ROWCOUNT);
+	DBMS_OUTPUT.PUT_LINE(CHR(13));
+	DBMS_OUTPUT.PUT_LINE(LPAD('=',155,'='));
+	DBMS_OUTPUT.PUT_LINE(LPAD('-',70,'-')||' '||'END OF REPORT '||' '||LPAD('-',69,'-'));
+	
+	CLOSE RELEASE_CURSOR;
+END;
+/
+
+--exec PRC_CLINIC_EXAM_REC('1/3/2020');

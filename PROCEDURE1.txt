@@ -1,0 +1,128 @@
+--PROCEDURE INSERT RECORDS INTO EXAMINATION WITH VALIDATION
+
+ALTER SESSION SET NLS_DATE_FORMAT='DD/MM/YYYY';
+SET LINESIZE 200
+SET PAGESIZE 100
+SET DEFINE ON;
+SET SERVEROUTPUT ON
+
+CREATE OR REPLACE PROCEDURE PRC_INSERT_EXAM (in_petID IN VARCHAR2, in_temperature IN NUMBER, in_employeeID IN VARCHAR2, in_diseaseID IN VARCHAR2, in_release_date IN DATE, in_taskID IN VARCHAR2) AS
+
+e_pet_invalid			 exception;
+e_emp_invalid			 exception;
+e_disease_invalid	     exception;
+e_task_invalid			 exception;
+v_petID				 PET.pet_id%TYPE;
+v_temperature		 EXAMINATION.temperature%TYPE;
+v_employeeID		 EMPLOYEE.employee_id%TYPE;
+v_diseaseID			 Disease.disease_id%TYPE;
+v_releaseDate		 EXAMINATION.release_date%TYPE;
+v_taskID			 TASK.task_id%TYPE;
+v_examDate			 EXAMINATION.exam_date%TYPE;
+v_examTime			 EXAMINATION.exam_time%TYPE;
+
+CURSOR PET_CURSOR IS
+	SELECT pet_id
+	FROM PET
+	WHERE pet_id=in_petID;
+
+CURSOR EMPLOYEE_CURSOR IS
+	SELECT employee_id
+	FROM EMPLOYEE
+	WHERE employee_id=in_employeeID;
+	
+CURSOR DISEASE_CURSOR IS
+	SELECT disease_id
+	FROM DISEASE D
+	WHERE D.disease_id=in_diseaseID;
+	
+CURSOR TASK_CURSOR IS
+	SELECT task_id
+	FROM TASK 
+	WHERE task_id=in_taskID;
+	
+BEGIN
+
+	OPEN PET_CURSOR;
+	
+	FETCH PET_CURSOR INTO
+	v_petID;
+	
+	IF PET_CURSOR%NOTFOUND
+	THEN
+	RAISE e_pet_invalid;
+	END IF;
+
+	OPEN EMPLOYEE_CURSOR;
+	
+	FETCH EMPLOYEE_CURSOR INTO
+	v_employeeID;
+	
+	IF EMPLOYEE_CURSOR%NOTFOUND
+	THEN
+	RAISE e_emp_invalid;
+	END IF;
+	
+	OPEN DISEASE_CURSOR;
+	
+	FETCH DISEASE_CURSOR INTO
+	v_diseaseID;
+	
+	IF DISEASE_CURSOR%NOTFOUND
+	THEN
+	RAISE e_disease_invalid;
+	END IF;
+	
+	OPEN TASK_CURSOR;
+	
+	FETCH TASK_CURSOR INTO
+	v_taskID;
+	
+	IF TASK_CURSOR%NOTFOUND
+	THEN
+	RAISE e_task_invalid;
+	END IF;
+	
+	v_temperature:= in_temperature;
+	v_releaseDate :=in_release_date;
+	v_examDate :=SYSDATE;
+	v_examTime :=TO_CHAR(SYSDATE,'HH24:MI');
+	
+	INSERT INTO EXAMINATION VALUES (v_examDate, v_examTime, v_petID, v_temperature, v_employeeID, v_diseaseID, v_releaseDate,v_taskID);
+		
+	DBMS_OUTPUT.PUT_LINE('RECORD INSERTED');
+	
+	CLOSE PET_CURSOR;
+	CLOSE EMPLOYEE_CURSOR;
+	CLOSE DISEASE_CURSOR;
+	CLOSE TASK_CURSOR;
+	
+	EXCEPTION
+	WHEN e_pet_invalid THEN	
+	DBMS_OUTPUT.PUT_LINE('UNKNOWN PET ID.');
+	
+	WHEN e_emp_invalid THEN	
+	DBMS_OUTPUT.PUT_LINE('UNKNOWN EMPLOYEE ID.');
+	
+	WHEN e_disease_invalid THEN	
+	DBMS_OUTPUT.PUT_LINE('UNKNOWN DISEASE ID.');
+	
+	WHEN e_task_invalid THEN	
+	DBMS_OUTPUT.PUT_LINE('UNKNOWN TASK ID.');
+	
+END;
+/
+
+--PRC_INSERT_EXAM (in_petID IN VARCHAR2, in_temperature IN NUMBER, in_employeeID IN VARCHAR2, in_diseaseID IN VARCHAR2, in_release_date IN DATE, in_taskID IN VARCHAR2);
+
+--exec PRC_INSERT_EXAM ('P006001', 36,'EMP11000' ,'D0001' , '1/4/2022', 'TA0027');
+
+--exec PRC_INSERT_EXAM ('P006000', 36,'EMP00196' ,'D0001' , '1/4/2022', 'TA0027');
+
+--exec PRC_INSERT_EXAM ('P006000', 36,'EMP11000' ,'D0013' , '1/4/2022', 'TA0027');
+
+--exec PRC_INSERT_EXAM ('P006000', 36,'EMP11000' ,'D0001' , '1/4/2022', 'TA0042');
+
+--exec PRC_INSERT_EXAM ('P006000', 36,'EMP11000' ,'D0001' , '1/4/2022', 'TA0039');--can insert
+
+
